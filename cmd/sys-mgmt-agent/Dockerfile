@@ -5,35 +5,29 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-ARG BUILDER_BASE=golang:1.16-alpine3.14
-FROM ${BUILDER_BASE} AS builder
+ARG BUILDER_BASE
+ARG TARGET_ARCH
 
-WORKDIR /edgex-go
+FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
+ARG CC
+ARG CXX
+ARG GOARCH
+ARG GOARM
+ARG GOOS=linux
+ARG HOST
+LABEL stage=builder
 
-# The main mirrors are giving us timeout issues on builds periodically.
-# So we can try these.
-RUN sed -e 's/dl-cdn[.]alpinelinux.org/nl.alpinelinux.org/g' -i~ /etc/apk/repositories
+RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/sys-mgmt-agent/sys-mgmt-agent
 
-RUN apk add --update --no-cache make bash git
+RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/sys-mgmt-executor/sys-mgmt-executor
 
-COPY . .
-RUN [ ! -d "vendor" ] && go mod download all || echo "skipping..."
 
-# Build the SMA executable.
-RUN make cmd/sys-mgmt-agent/sys-mgmt-agent
+FROM ${TARGET_ARCH}/alpine:3.14
 
-# Build the golang "executor" executable.
-RUN make cmd/sys-mgmt-executor/sys-mgmt-executor
-
-# Get the Docker-in-Docker image layered-in now.
-FROM docker:20.10.8
+RUN apk add --update --no-cache ca-certificates dumb-init
 
 LABEL license='SPDX-License-Identifier: Apache-2.0' \
-      copyright='Copyright (c) 2017-2019: Mainflux, Cavium, Dell, Copyright (c) 2021: Intel Corporation'
-
-# consul token needs to be security-bootstrappable and for security-bootstrappable, dumb-init is required
-RUN apk add --update --no-cache bash dumb-init py3-pip curl && \
-      pip install --no-cache-dir docker-compose==1.23.2
+      copyright='Copyright (c) 2018: Cavium, Copyright (c) 2021: Intel Corporation'
 
 ENV APP_PORT=58890
 #expose system mgmt agent port

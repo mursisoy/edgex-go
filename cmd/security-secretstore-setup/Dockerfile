@@ -16,22 +16,22 @@
 # 
 #  ----------------------------------------------------------------------------------
 
-ARG BUILDER_BASE=golang:1.16-alpine3.14
-FROM ${BUILDER_BASE} AS builder
+ARG BUILDER_BASE
+ARG TARGET_ARCH
 
-WORKDIR /edgex-go
+FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
+ARG CC
+ARG CXX
+ARG GOARCH
+ARG GOARM
+ARG GOOS=linux
+ARG HOST
+LABEL stage=builder
 
-RUN sed -e 's/dl-cdn[.]alpinelinux.org/nl.alpinelinux.org/g' -i~ /etc/apk/repositories
-
-RUN apk add --update --no-cache make git
-
-COPY . .
-RUN [ ! -d "vendor" ] && go mod download all || echo "skipping..."
-
-RUN make cmd/security-file-token-provider/security-file-token-provider \
+RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/security-file-token-provider/security-file-token-provider \
   cmd/security-secretstore-setup/security-secretstore-setup
 
-FROM alpine:3.14
+FROM ${TARGET_ARCH}/alpine:3.14
 
 RUN apk add --update --no-cache ca-certificates dumb-init su-exec
 

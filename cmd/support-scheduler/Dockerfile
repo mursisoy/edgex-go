@@ -16,28 +16,21 @@
 # 
 #  ----------------------------------------------------------------------------------
 
-ARG BUILDER_BASE=golang:1.16-alpine3.14
-FROM ${BUILDER_BASE} AS builder
+ARG BUILDER_BASE
+ARG TARGET_ARCH
 
-WORKDIR /edgex-go
+FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
+ARG CC
+ARG CXX
+ARG GOARCH
+ARG GOARM
+ARG GOOS=linux
+ARG HOST
+LABEL stage=builder
 
-# The main mirrors are giving us timeout issues on builds periodically.
-# So we can try these.
+RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/support-scheduler/support-scheduler
 
-RUN sed -e 's/dl-cdn[.]alpinelinux.org/nl.alpinelinux.org/g' -i~ /etc/apk/repositories
-
-RUN apk add --update --no-cache make git
-
-COPY go.mod .
-
-RUN go mod download
-
-COPY . .
-
-RUN go mod tidy
-RUN make cmd/support-scheduler/support-scheduler
-
-FROM alpine:3.14
+FROM ${TARGET_ARCH}/alpine:3.14
 
 RUN apk add --update --no-cache dumb-init
 

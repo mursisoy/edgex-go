@@ -15,24 +15,21 @@
 # 
 #  ----------------------------------------------------------------------------------
 
-ARG BUILDER_BASE=golang:1.16-alpine3.14
-FROM ${BUILDER_BASE} AS builder
+ARG BUILDER_BASE
+ARG TARGET_ARCH
 
-WORKDIR /edgex-go
-
-# The main mirrors are giving us timeout issues on builds periodically.
-# So we can try these.
-
-RUN sed -e 's/dl-cdn[.]alpinelinux.org/nl.alpinelinux.org/g' -i~ /etc/apk/repositories
-
-RUN apk add --update --no-cache make bash git ca-certificates
-
-COPY . .
-RUN [ ! -d "vendor" ] && go mod download all || echo "skipping..."
+FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
+ARG CC
+ARG CXX
+ARG GOARCH
+ARG GOARM
+ARG GOOS=linux
+ARG HOST
+LABEL stage=builder
 
 RUN make cmd/support-notifications/support-notifications
 
-FROM alpine:3.14
+FROM ${TARGET_ARCH}/alpine:3.14
 
 RUN apk add --update --no-cache ca-certificates dumb-init
 

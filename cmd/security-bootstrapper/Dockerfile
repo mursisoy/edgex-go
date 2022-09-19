@@ -17,21 +17,21 @@
 #  SPDX-License-Identifier: Apache-2.0
 #  ----------------------------------------------------------------------------------
 
-ARG BUILDER_BASE=golang:1.16-alpine3.14
-FROM ${BUILDER_BASE} AS builder
+ARG BUILDER_BASE
+ARG TARGET_ARCH
 
-WORKDIR /edgex-go
+FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
+ARG CC
+ARG CXX
+ARG GOARCH
+ARG GOARM
+ARG GOOS=linux
+ARG HOST
+LABEL stage=builder
 
-RUN sed -e 's/dl-cdn[.]alpinelinux.org/nl.alpinelinux.org/g' -i~ /etc/apk/repositories
+RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/security-bootstrapper/security-bootstrapper
 
-RUN apk add --update --no-cache make git
-
-COPY . .
-RUN [ ! -d "vendor" ] && go mod download all || echo "skipping..."
-
-RUN make cmd/security-bootstrapper/security-bootstrapper
-
-FROM alpine:3.14
+FROM ${TARGET_ARCH}/alpine:3.14
 
 LABEL license='SPDX-License-Identifier: Apache-2.0' \
       copyright='Copyright (c) 2021 Intel Corporation'
