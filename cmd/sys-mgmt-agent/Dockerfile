@@ -6,23 +6,13 @@
 #
 
 ARG BUILDER_BASE
-ARG TARGET_ARCH
 
-FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
-ARG CC
-ARG CXX
-ARG GOARCH
-ARG GOARM
-ARG GOOS=linux
-ARG HOST
+FROM ${BUILDER_BASE} AS builder
+
 LABEL stage=builder
+RUN make cmd/sys-mgmt-agent/sys-mgmt-agent cmd/sys-mgmt-executor/sys-mgmt-executor
 
-RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/sys-mgmt-agent/sys-mgmt-agent
-
-RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/sys-mgmt-executor/sys-mgmt-executor
-
-
-FROM ${TARGET_ARCH}/alpine:3.14
+FROM alpine:3.14
 
 RUN apk add --update --no-cache ca-certificates dumb-init
 

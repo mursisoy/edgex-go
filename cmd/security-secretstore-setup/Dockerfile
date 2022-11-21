@@ -13,25 +13,18 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-# 
+#
 #  ----------------------------------------------------------------------------------
 
 ARG BUILDER_BASE
-ARG TARGET_ARCH
 
-FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
-ARG CC
-ARG CXX
-ARG GOARCH
-ARG GOARM
-ARG GOOS=linux
-ARG HOST
+FROM ${BUILDER_BASE} AS builder
+
 LABEL stage=builder
-
-RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/security-file-token-provider/security-file-token-provider \
+RUN make cmd/security-file-token-provider/security-file-token-provider \
   cmd/security-secretstore-setup/security-secretstore-setup
 
-FROM ${TARGET_ARCH}/alpine:3.14
+FROM alpine:3.14
 
 RUN apk add --update --no-cache ca-certificates dumb-init su-exec
 
@@ -53,6 +46,6 @@ COPY --from=builder /edgex-go/cmd/security-secretstore-setup/entrypoint.sh /usr/
 RUN chmod +x /usr/local/bin/entrypoint.sh \
     && ln -s /usr/local/bin/entrypoint.sh / \
     && mkdir -p /vault/config/assets \
-    && chown -Rh 100:1000 /vault/    
+    && chown -Rh 100:1000 /vault/
 
 ENTRYPOINT ["entrypoint.sh"]

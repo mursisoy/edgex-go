@@ -49,58 +49,31 @@ GOTESTFLAGS?=-race
 
 GIT_SHA=$(shell git rev-parse HEAD)
 
-ARCH=$(shell uname -m)
-TARGET_ARCH?=$(shell uname -m)
+BUILD=$(shell uname -m)
+HOST?=$(shell uname -m)
 
-BUILDER_BASE="$(DOCKER_REPOSITORY)/$(DOCKER_PREFIX)builder"
-
-ifeq ($(TARGET_ARCH), arm32v6)
-	GOARCH=arm
-	GOARM=6
-	CC=arm-linux-gnueabihf-gcc
-	CXX=arm-linux-gnueabihf-g++
-	HOST=arm-linux-gnueabihf
-else ifeq ($(TARGET_ARCH), arm32v7)
-	GOARCH=arm
-	GOARM=7
-	CC=arm-linux-gnueabihf-gcc
-	CXX=arm-linux-gnueabihf-g++
-	HOST=arm-linux-gnueabihf
-else ifeq ($(TARGET_ARCH), arm64v8)
-	GOARCH=arm64
-	GOARM=
-	CC=aarch64-linux-gnu-gcc
-	CXX=aarch64-linux-gnu-g++
-	HOST=aarch64-linux-gnu
-else ifeq ($(TARGET_ARCH), x86_64)
-	TARGET_ARCH=amd64
-	HOST=x86_64-pc-linux-gnu
-endif
+BUILDER_BASE="$(DOCKER_REPOSITORY)/$(DOCKER_PREFIX)edgex-go-builder"
 
 GO=CGO_ENABLED=0 GO111MODULE=on GOARCH=$(GOARCH) GOARM=$(GOARM) CC=$(CC) CXX=$(CXX) go
 GOCGO=CGO_ENABLED=1 GO111MODULE=on GOARCH=$(GOARCH) GOARM=$(GOARM) CC=$(CC) CXX=$(CXX) go
 
 
-DOCKER_BUILD_PUSH=docker build \
-		--build-arg CC=$(CC) \
-		--build-arg CXX=$(CXX) \
-		--build-arg GOARM=$(GOARM) \
-		--build-arg GOARCH=$(GOARCH) \
-		--build-arg TARGET_ARCH=$(TARGET_ARCH) \
-		--build-arg HOST=$(HOST) \
+DOCKER_BUILD_PUSH=docker buildx build \
+		--platform linux/arm/v7,linux/arm64/v8,linux/amd64 \
 		--build-arg BUILDER_BASE=$(BUILDER_BASE):$(GIT_SHA) \
 	    --build-arg http_proxy \
 	    --build-arg https_proxy \
+		--push \
 		-f cmd/$(MICROSERVICE)/Dockerfile \
 		--label "git_sha=$(GIT_SHA)" \
-		-t $(DOCKER_IMAGE_NAME):$(GIT_SHA)-$(TARGET_ARCH) \
-		-t $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)-$(TARGET_ARCH) \
-		. \
-		&& [ $${DOCKER_PUSH:=0} -eq 1 ] \
-		&& docker push  $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)-$(TARGET_ARCH) \
-		&& docker manifest create $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) --amend $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)-$(TARGET_ARCH) \
-		&& docker manifest push $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
-		|| echo "Not pushing image."
+		-t $(DOCKER_IMAGE_NAME):$(GIT_SHA) \
+		-t $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
+		.
+		# && [ $${DOCKER_PUSH:=0} -eq 1 ] \
+		# && docker push  $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)-$(TARGET_ARCH) \
+		# && docker manifest create $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) --amend $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)-$(TARGET_ARCH) \
+		# && docker manifest push $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) \
+		# || echo "Not pushing image."
 
 build: $(MICROSERVICES)
 
@@ -173,14 +146,12 @@ docker_prune:
 
 
 docker_builder:
-	docker build \
-		--build-arg CC=$(CC) \
-		--build-arg CXX=$(CXX) \
-		--build-arg TARGET_ARCH=$(TARGET_ARCH) \
-		--build-arg HOST=$(HOST) \
+	docker buildx build \
+		--platform linux/arm/v7,linux/arm64/v8,linux/amd64 \
+		--push \
 		-f builder.Dockerfile \
 		--label "git_sha=$(GIT_SHA)" \
-		-t $(BUILDER_BASE):$(GIT_SHA)-$(TARGET_ARCH) \
+		-t $(BUILDER_BASE):$(GIT_SHA) \
 		.
 
 docker_core_metadata: MICROSERVICE=core-metadata

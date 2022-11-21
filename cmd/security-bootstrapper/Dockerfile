@@ -18,20 +18,13 @@
 #  ----------------------------------------------------------------------------------
 
 ARG BUILDER_BASE
-ARG TARGET_ARCH
 
-FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
-ARG CC
-ARG CXX
-ARG GOARCH
-ARG GOARM
-ARG GOOS=linux
-ARG HOST
+FROM ${BUILDER_BASE} AS builder
+
 LABEL stage=builder
+RUN make cmd/security-bootstrapper/security-bootstrapper
 
-RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/security-bootstrapper/security-bootstrapper
-
-FROM ${TARGET_ARCH}/alpine:3.14
+FROM alpine:3.14
 
 LABEL license='SPDX-License-Identifier: Apache-2.0' \
       copyright='Copyright (c) 2021 Intel Corporation'

@@ -13,24 +13,17 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-# 
+#
 #  ----------------------------------------------------------------------------------
 
 ARG BUILDER_BASE
-ARG TARGET_ARCH
 
-FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
-ARG CC
-ARG CXX
-ARG GOARCH
-ARG GOARM
-ARG GOOS=linux
-ARG HOST
+FROM ${BUILDER_BASE} AS builder
+
 LABEL stage=builder
+RUN make cmd/support-scheduler/support-scheduler
 
-RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/support-scheduler/support-scheduler
-
-FROM ${TARGET_ARCH}/alpine:3.14
+FROM alpine:3.14
 
 RUN apk add --update --no-cache dumb-init
 

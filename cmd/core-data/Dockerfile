@@ -13,25 +13,18 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-# 
+#
 #  ----------------------------------------------------------------------------------
 
 ARG BUILDER_BASE
-ARG TARGET_ARCH
 
-FROM ${BUILDER_BASE}-${TARGET_ARCH} AS builder
-ARG CC
-ARG CXX
-ARG GOARCH
-ARG GOARM
-ARG GOOS=linux
-ARG HOST
+FROM ${BUILDER_BASE} AS builder
+
 LABEL stage=builder
-
-RUN GOOS=${GOOS} GOARCH=${GOARCH} CGOARM=${GOARM} CC=${CC} CXX=${CXX} make cmd/core-data/core-data
+RUN make cmd/core-data/core-data
 
 #Next image - Copy built Go binary into new workspace
-FROM ${TARGET_ARCH}/alpine:3.14
+FROM alpine:3.14
 
 LABEL license='SPDX-License-Identifier: Apache-2.0' \
       copyright='Copyright (c) 2018: Dell, Cavium'
@@ -39,10 +32,6 @@ LABEL license='SPDX-License-Identifier: Apache-2.0' \
 ENV APP_PORT=59880
 #expose core data port
 EXPOSE $APP_PORT
-
-# The main mirrors are giving us timeout issues on builds periodically.
-# So we can try these.
-RUN sed -e 's/dl-cdn[.]alpinelinux.org/nl.alpinelinux.org/g' -i~ /etc/apk/repositories
 
 RUN apk add --update --no-cache zeromq dumb-init
 COPY --from=builder /edgex-go/Attribution.txt /
